@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Tinder</string>
+
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="button_remove_item">Remove item</string>
+    <string name="text_view_image_gone">Спасибо за Ваше нужное мнение!</string>
+    <string name="button_refill_items_text">Refill items</string>
+</resources>
