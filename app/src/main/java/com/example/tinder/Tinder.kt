@@ -1,6 +1,5 @@
 package com.example.tinder
 
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.graphics.PointF
@@ -13,13 +12,10 @@ import androidx.cardview.widget.CardView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.constraintlayout.widget.ConstraintSet.*
-import androidx.core.view.size
 import com.bumptech.glide.Glide
-import com.example.tinder.AnimationType.*
 import kotlin.math.abs
-import kotlin.math.min
+import kotlin.math.sign
 
-@SuppressLint("ClickableViewAccessibility")
 class Tinder(
     context: Context,
     attrs: AttributeSet
@@ -76,8 +72,8 @@ class Tinder(
         val view = inflate(context, R.layout.tinder_layout, this)
 
         fun <T : Comparable<T>> getValidValue(value: T, minValue: T, maxValue: T): T {
-            debugLog("$value - $minValue - $maxValue")
             return when {
+                value is Float && value == -1f -> value
                 value < minValue -> minValue
                 value > maxValue -> maxValue
                 else -> value
@@ -85,13 +81,16 @@ class Tinder(
         }
 
         val tinderAttrs = context.obtainStyledAttributes(attrs, R.styleable.Tinder, 0, 0)
-        imageAlpha = getValidValue(tinderAttrs.getFloat(R.styleable.Tinder_minAlpha, .2f), 0f, 1f)
+        imageAlpha = getValidValue(tinderAttrs.getFloat(R.styleable.Tinder_minAlpha, -1f), 0f, 1f)
+        imageRotation = getValidValue(tinderAttrs.getFloat(R.styleable.Tinder_rotationDegrees, 30f), 0f, 30f)
+
+        debugLog("$imageAlpha - $imageRotation")
+
         swipeThreshold = getValidValue(
             tinderAttrs.getFloat(R.styleable.Tinder_swipeThreshold, (getComponentSizes().first - imageSizes.first) / 2f),
             0f,
             getComponentSizes().first / 2f
         )
-        imageRotation = getValidValue(tinderAttrs.getFloat(R.styleable.Tinder_rotationDegrees, 10f), 0f, 360f)
         imagesCount = getValidValue(tinderAttrs.getInt(R.styleable.Tinder_elementsCount, 1), 1, 5)
         imageRadiusPercent = getValidValue(tinderAttrs.getFloat(R.styleable.Tinder_elementsRadius, .25f), 0f, 1f)
 
@@ -167,7 +166,7 @@ class Tinder(
         cardItems[0].setOnTouchListener { curView, event ->
             val viewDiff = curView.x - startCardViewPosition.x
             val absoluteDiff = abs(viewDiff)
-            val diffPercent: Float = absoluteDiff / swipeThreshold
+            val absoluteDiffPercent = absoluteDiff / swipeThreshold
 
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
@@ -178,14 +177,25 @@ class Tinder(
                     }
                 }
                 MotionEvent.ACTION_MOVE -> {
+                    // Положение начала = смещение между текущими координатами и точкой взятия
                     curView.x += event.x - touchDown.x
 
+                    if (imageAlpha != -1f)
+                        curView.alpha = if (absoluteDiffPercent < 1f) 1 - (1 - imageAlpha) * absoluteDiffPercent else imageAlpha
+//
+                    if (imageRotation != -1f) {
+                        val diffPercent = viewDiff / swipeThreshold
+                        curView.rotation = if (absoluteDiffPercent < 1f) diffPercent * imageRotation else imageRotation * diffPercent.sign
+                    }
                 }
                 MotionEvent.ACTION_UP -> {
                     curView.x = startCardViewPosition.x
 
-                    if (absoluteDiff > swipeThreshold)
+                    if (absoluteDiffPercent >= 1f)
                         removeMainImage()
+
+                    if (imageAlpha != -1f) curView.alpha = 1f
+                    if (imageRotation != -1f) curView.rotation = 0f
                 }
             }
             true
